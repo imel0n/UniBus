@@ -2,7 +2,7 @@
 
 <template>
   <div>
-    <h1>Favourite Stops</h1>
+    <h1 class="page-title">Favourite Stops</h1>
   </div>
 </template>
 
