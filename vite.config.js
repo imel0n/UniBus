@@ -10,6 +10,10 @@ export default defineConfig({
     vue(),
     vueDevTools(),
   ],
+  server: {
+    // Required for the Cloudflare tunnel (npm run dev:tunnel) to reach the dev server.
+    allowedHosts: ['unibusdev.hejieming.com'],
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
