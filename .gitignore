@@ -37,3 +37,6 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# vite-plugin-pwa dev service worker output
+dev-dist
