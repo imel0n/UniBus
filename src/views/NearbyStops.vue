@@ -17,7 +17,7 @@ const stops = ref([
   {
     name: 'Blk 456',
     distance: '340 m',
-    isFavourite: true,
+    isFavourite: false,
     services: [
       { code: 'D2', arrival: 4 },
       { code: 'A1', arrival: 11 },

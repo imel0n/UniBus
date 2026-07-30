@@ -59,7 +59,7 @@ nav {
 
 .label {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .tab.router-link-exact-active {
