@@ -37,6 +37,9 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# vite-plugin-pwa dev service worker output
+dev-dist
 dev-dist/registerSW.js
 dev-dist/sw.js
 dev-dist/workbox-7e5eb42b.js

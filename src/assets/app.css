@@ -1,0 +1,20 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource/lexend-deca/700.css';
+
+html,
+body {
+  font-family: 'Inter Variable', sans-serif;
+  touch-action: pan-x pan-y;
+}
+
+h1.page-title {
+  font-family: 'Lexend Deca', sans-serif;
+  font-weight: 700;
+}
+
+* {
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
