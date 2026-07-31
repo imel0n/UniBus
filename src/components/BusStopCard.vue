@@ -35,6 +35,12 @@ const codeColors = {
 function codeStyle(code) {
   return codeColors[code] ?? { background: '#f0f0f0', color: '#000000' }
 }
+
+function arrivalClass(arrival) {
+  if (arrival === 'Arr') return 'urgent'
+  if (typeof arrival === 'number' && arrival <= 5) return 'soon'
+  return ''
+}
 </script>
 
 <template>
@@ -68,7 +74,7 @@ function codeStyle(code) {
       </template>
       <div v-for="service in sortedServices" v-else :key="service.code" class="service">
         <div class="code" :style="codeStyle(service.code)">{{ service.code }}</div>
-        <div class="arrival">
+        <div class="arrival" :class="arrivalClass(service.arrival)">
           {{ typeof service.arrival === 'number' ? `${service.arrival} min` : service.arrival }}
         </div>
       </div>
@@ -156,6 +162,16 @@ function codeStyle(code) {
 .arrival {
   font-size: 12px;
   color: #6a6a6a;
+  font-weight: 500;
+}
+
+.arrival.soon {
+  color: #d97706;
+}
+
+.arrival.urgent {
+  color: #16a34a;
+  font-weight: 700;
 }
 
 .skeleton {
