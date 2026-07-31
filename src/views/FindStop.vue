@@ -8,7 +8,6 @@ import CircularButton from '@/components/CircularButton.vue'
 import { useBusStopsStore } from '@/stores/busStops'
 import { useFavouritesStore } from '@/stores/favourites'
 import { useGeolocation } from '@/composables/useGeolocation'
-import { useDeviceHeading } from '@/composables/useDeviceHeading'
 import { useArrivalsPolling } from '@/composables/useArrivalsPolling'
 import { formatDistance, haversineMetres } from '@/utils/geo'
 import stopMarkerIcon from '@/assets/icons/stop-marker.png'
@@ -31,7 +30,6 @@ const router = useRouter()
 const busStopsStore = useBusStopsStore()
 const favouritesStore = useFavouritesStore()
 const { coords, locate } = useGeolocation()
-const { heading, enable: enableHeading } = useDeviceHeading()
 
 const mapEl = ref(null)
 const searchInput = ref(null)
@@ -73,7 +71,7 @@ const activeIcon = L.icon({
 })
 
 const userIcon = L.divIcon({
-  html: '<div class="user-cone"></div><div class="user-dot"></div>',
+  html: '<div class="user-dot"></div>',
   className: 'user-location-icon',
   iconSize: [24, 24],
   iconAnchor: [12, 12],
@@ -118,14 +116,6 @@ function renderUserLocation() {
     accuracyCircle = null
   }
 
-  renderHeading()
-}
-
-function renderHeading() {
-  const el = userMarker?.getElement()
-  if (!el) return
-  el.classList.toggle('user-location-icon--has-heading', heading.value !== null)
-  el.style.setProperty('--heading', `${heading.value ?? 0}deg`)
 }
 
 const searchResults = computed(() => {
@@ -271,8 +261,6 @@ function chooseResult(stop) {
 }
 
 function recenterOnUser() {
-  // iOS gates the compass behind a gesture, so piggyback on this tap.
-  enableHeading()
   followSelectedStop = false
   recenterRequested = true
   // Move on the cached fix straight away so the tap feels answered; the watcher
@@ -290,8 +278,6 @@ onMounted(() => {
   busStopsStore.ensureLoaded()
   favouritesStore.ensureLoaded()
   locate()
-  // A no-op where a permission prompt is required; the recentre tap covers that.
-  enableHeading()
 
   map = L.map(mapEl.value, {
     center: SINGAPORE_CENTRE,
@@ -345,8 +331,6 @@ watch(cardEl, (el) => {
   })
   cardResizeObserver.observe(el)
 })
-
-watch(heading, renderHeading)
 
 // Arrivals land after the card opens, and expanding it grows it again — both move
 // the visible centre, so the stop has to be re-centred against the new one.
@@ -583,25 +567,6 @@ watch(() => busStopsStore.status, renderVisibleMarkers)
   background: #1a73e8;
   border: 2.5px solid #fff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-}
-
-:deep(.user-cone) {
-  display: none;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 54px;
-  height: 40px;
-  /* Bottom-centre of the wedge sits on the dot, so it pivots about the user. */
-  transform-origin: 50% 100%;
-  transform: translate(-50%, -100%) rotate(var(--heading, 0deg));
-  clip-path: polygon(50% 100%, 0 12%, 50% 0, 100% 12%);
-  background: linear-gradient(to top, rgba(26, 115, 232, 0.45), rgba(26, 115, 232, 0));
-  transition: transform 0.15s linear;
-}
-
-:deep(.user-location-icon--has-heading) .user-cone {
-  display: block;
 }
 
 :deep(.stop-marker-icon--base) {
