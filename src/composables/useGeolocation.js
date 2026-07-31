@@ -3,7 +3,7 @@ import { ref } from 'vue'
 const OPTIONS = { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
 
 export function useGeolocation() {
-  const coords = ref(null) // { lat, lon }
+  const coords = ref(null) // { lat, lon, accuracy } — accuracy in metres
   const status = ref('idle') // idle | locating | ready | error
   const error = ref(null)
 
@@ -26,7 +26,11 @@ export function useGeolocation() {
     error.value = null
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        coords.value = { lat: position.coords.latitude, lon: position.coords.longitude }
+        coords.value = {
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        }
         status.value = 'ready'
       },
       (err) => {

@@ -7,6 +7,7 @@ import CircularButton from '@/components/CircularButton.vue'
 import { useBusStopsStore } from '@/stores/busStops'
 import { useFavouritesStore } from '@/stores/favourites'
 import { useGeolocation } from '@/composables/useGeolocation'
+import { useDeviceHeading } from '@/composables/useDeviceHeading'
 import { useArrivalsPolling } from '@/composables/useArrivalsPolling'
 import { formatDistance, haversineMetres } from '@/utils/geo'
 import stopMarkerIcon from '@/assets/icons/stop-marker.png'
@@ -21,6 +22,7 @@ const MAX_RESULTS = 8
 const busStopsStore = useBusStopsStore()
 const favouritesStore = useFavouritesStore()
 const { coords, locate } = useGeolocation()
+const { heading, enable: enableHeading } = useDeviceHeading()
 
 const mapEl = ref(null)
 const searchInput = ref(null)
@@ -35,6 +37,8 @@ let cardResizeObserver = null
 // proxies breaks their internal identity checks.
 let map = null
 let markerLayer = null
+let userMarker = null
+let accuracyCircle = null
 const markersByCode = new Map()
 let userHasMovedMap = false
 let hasCentredOnUser = false
@@ -52,6 +56,62 @@ const activeIcon = L.icon({
   iconAnchor: [19, 19],
   className: 'stop-marker-icon stop-marker-icon--active',
 })
+
+const userIcon = L.divIcon({
+  html: '<div class="user-cone"></div><div class="user-dot"></div>',
+  className: 'user-location-icon',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+})
+
+function renderUserLocation() {
+  if (!map || !coords.value) return
+
+  const { lat, lon, accuracy } = coords.value
+  const position = [lat, lon]
+
+  if (userMarker) {
+    userMarker.setLatLng(position)
+  } else {
+    // Sits above the stop markers so it stays findable in a dense cluster.
+    userMarker = L.marker(position, {
+      icon: userIcon,
+      interactive: false,
+      keyboard: false,
+      zIndexOffset: 1000,
+    }).addTo(map)
+  }
+
+  // A GPS fix good to a few metres is smaller than the dot itself; drawing the
+  // halo then just adds noise.
+  if (accuracy > 20) {
+    if (accuracyCircle) {
+      accuracyCircle.setLatLng(position).setRadius(accuracy)
+    } else {
+      accuracyCircle = L.circle(position, {
+        radius: accuracy,
+        interactive: false,
+        color: '#1a73e8',
+        weight: 1,
+        opacity: 0.25,
+        fillColor: '#1a73e8',
+        fillOpacity: 0.12,
+      }).addTo(map)
+    }
+  } else if (accuracyCircle) {
+    accuracyCircle.remove()
+    accuracyCircle = null
+  }
+
+  renderHeading()
+}
+
+function renderHeading() {
+  const el = userMarker?.getElement()
+  if (!el) return
+  el.classList.toggle('user-location-icon--has-heading', heading.value !== null)
+  el.style.setProperty('--heading', `${heading.value ?? 0}deg`)
+}
 
 const searchResults = computed(() => {
   const q = query.value.trim().toLowerCase()
@@ -141,6 +201,8 @@ function chooseResult(stop) {
 }
 
 function recenterOnUser() {
+  // iOS gates the compass behind a gesture, so piggyback on this tap.
+  enableHeading()
   if (coords.value) {
     map.flyTo([coords.value.lat, coords.value.lon], FOCUS_ZOOM, { duration: 0.6 })
   } else {
@@ -153,6 +215,8 @@ onMounted(() => {
   busStopsStore.ensureLoaded()
   favouritesStore.ensureLoaded()
   locate()
+  // A no-op where a permission prompt is required; the recentre tap covers that.
+  enableHeading()
 
   map = L.map(mapEl.value, {
     center: SINGAPORE_CENTRE,
@@ -168,6 +232,7 @@ onMounted(() => {
   }).addTo(map)
 
   markerLayer = L.layerGroup().addTo(map)
+  renderUserLocation()
 
   map.on('moveend zoomend', renderVisibleMarkers)
   map.on('click', () => setSelected(null))
@@ -185,6 +250,8 @@ onActivated(() => {
 onBeforeUnmount(() => {
   map?.remove()
   map = null
+  userMarker = null
+  accuracyCircle = null
   cardResizeObserver?.disconnect()
   cardResizeObserver = null
 })
@@ -202,8 +269,12 @@ watch(cardEl, (el) => {
   cardResizeObserver.observe(el)
 })
 
+watch(heading, renderHeading)
+
 watch(coords, (value) => {
   if (!value || !map) return
+
+  renderUserLocation()
 
   if (recenterRequested) {
     recenterRequested = false
@@ -405,6 +476,34 @@ watch(() => busStopsStore.status, renderVisibleMarkers)
 
 :deep(.leaflet-control-attribution) {
   display: none;
+}
+
+:deep(.user-dot) {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: #1a73e8;
+  border: 2.5px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+:deep(.user-cone) {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54px;
+  height: 40px;
+  /* Bottom-centre of the wedge sits on the dot, so it pivots about the user. */
+  transform-origin: 50% 100%;
+  transform: translate(-50%, -100%) rotate(var(--heading, 0deg));
+  clip-path: polygon(50% 100%, 0 12%, 50% 0, 100% 12%);
+  background: linear-gradient(to top, rgba(26, 115, 232, 0.45), rgba(26, 115, 232, 0));
+  transition: transform 0.15s linear;
+}
+
+:deep(.user-location-icon--has-heading) .user-cone {
+  display: block;
 }
 
 :deep(.stop-marker-icon--base) {
