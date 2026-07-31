@@ -1,17 +1,13 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
 import { useBusStopsStore } from '@/stores/busStops'
 import { useBusRoutesStore } from '@/stores/busRoutes'
+import { useGeolocation } from '@/composables/useGeolocation'
+import { haversineMetres } from '@/utils/geo'
 
 // Named so <KeepAlive :exclude> in App.vue can keep this view out of the cache.
 defineOptions({ name: 'BusInfo' })
-
-const SINGAPORE_CENTRE = [1.3521, 103.8198]
-const OVERVIEW_ZOOM = 12
-const ROUTE_PADDING = [32, 32]
 
 const route = useRoute()
 const router = useRouter()
@@ -21,11 +17,6 @@ const busRoutesStore = useBusRoutesStore()
 const serviceNo = computed(() => route.params.service)
 // 0 is direction 1 (origin -> destination); 1 is the return leg.
 const direction = ref(0)
-
-const mapEl = ref(null)
-// Leaflet instances stay outside Vue's reactivity — proxies break their internal
-// identity checks.
-let map = null
 
 const stopsByCode = computed(() => {
   const index = new Map()
@@ -38,8 +29,6 @@ const routeStops = computed(() =>
   busRoutesStore.stopCodes(serviceNo.value, direction.value).map((code) => ({
     code,
     name: stopsByCode.value.get(code)?.name ?? code,
-    lat: stopsByCode.value.get(code)?.lat,
-    lon: stopsByCode.value.get(code)?.lon,
   })),
 )
 
@@ -49,6 +38,25 @@ const isLoop = computed(() => {
   const stops = routeStops.value
   if (busRoutesStore.directionCount(serviceNo.value) < 2) return true
   return stops.length > 1 && stops[0].code === stops[stops.length - 1].code
+})
+
+const { coords, locate } = useGeolocation()
+
+/** The route stop nearest the user's current location, or null if unknown. */
+const closestStopCode = computed(() => {
+  if (!coords.value) return null
+  let closestCode = null
+  let closestDistance = Infinity
+  for (const stop of routeStops.value) {
+    const full = stopsByCode.value.get(stop.code)
+    if (!full) continue
+    const distance = haversineMetres(coords.value.lat, coords.value.lon, full.lat, full.lon)
+    if (distance < closestDistance) {
+      closestDistance = distance
+      closestCode = stop.code
+    }
+  }
+  return closestCode
 })
 
 const origin = computed(() => routeStops.value[0]?.name ?? '')
@@ -78,43 +86,9 @@ function retry() {
   busRoutesStore.ensureLoaded({ force: busRoutesStore.status === 'error' })
 }
 
-/** Frames the whole leg; the route line itself lands here later. */
-function fitRoute() {
-  if (!map) return
-  const points = routeStops.value
-    .filter((stop) => stop.lat !== undefined)
-    .map((stop) => [stop.lat, stop.lon])
-  if (!points.length) return
-  map.fitBounds(L.latLngBounds(points), { padding: ROUTE_PADDING, animate: false })
-}
-
-onMounted(() => {
-  busStopsStore.ensureLoaded()
-  busRoutesStore.ensureLoaded()
-
-  map = L.map(mapEl.value, {
-    center: SINGAPORE_CENTRE,
-    zoom: OVERVIEW_ZOOM,
-    zoomControl: false,
-  })
-
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    subdomains: 'abcd',
-    maxZoom: 20,
-  }).addTo(map)
-
-  fitRoute()
-})
-
-onBeforeUnmount(() => {
-  map?.remove()
-  map = null
-})
-
-// Both the route data landing and a reversal change what should be in frame.
-watch(routeStops, fitRoute)
+busStopsStore.ensureLoaded()
+busRoutesStore.ensureLoaded()
+locate()
 </script>
 
 <template>
@@ -182,8 +156,6 @@ watch(routeStops, fitRoute)
       </button>
     </header>
 
-    <div ref="mapEl" class="map" />
-
     <div class="stop-list">
       <div v-if="hasError" class="state">
         <p>Couldn’t load this route.</p>
@@ -197,7 +169,10 @@ watch(routeStops, fitRoute)
       </div>
       <ol v-else class="stops">
         <li v-for="(stop, index) in routeStops" :key="`${index}-${stop.code}`" class="stop">
-          {{ stop.name }}
+          <span class="stop-name" :class="{ nearest: stop.code === closestStopCode }">
+            {{ stop.name }}
+            <span v-if="stop.code === closestStopCode" class="nearest-label">Nearest Stop</span>
+          </span>
         </li>
       </ol>
     </div>
@@ -215,16 +190,17 @@ watch(routeStops, fitRoute)
 
 .header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
-  padding: max(12px, env(safe-area-inset-top)) 16px 12px;
+  padding: max(12px, env(safe-area-inset-top)) 20px 12px;
 }
 
 .back {
   display: flex;
+  align-items: center;
   border: none;
   background: none;
-  padding: 6px 2px 0 0;
+  padding: 0 2px 0 0;
   color: #1a1a1a;
   margin-left: -4px;
 }
@@ -232,9 +208,9 @@ watch(routeStops, fitRoute)
 .service {
   background: #000;
   color: #fff;
-  border-radius: 13px;
-  padding: 8px 14px;
-  font-size: 22px;
+  border-radius: 15px;
+  padding: 9px 16px;
+  font-size: 28px;
   font-weight: 700;
   line-height: 1.1;
 }
@@ -268,12 +244,6 @@ watch(routeStops, fitRoute)
   color: #9a9a9a;
 }
 
-.map {
-  flex: 1;
-  min-height: 0;
-  background: #f4f4f2;
-}
-
 .stop-list {
   flex: 1;
   min-height: 0;
@@ -290,21 +260,66 @@ watch(routeStops, fitRoute)
 }
 
 .stop {
-  padding: 14px 16px;
-  font-size: 15px;
+  position: relative;
+  padding: 22px 20px 22px 64px;
+  font-size: 17px;
   font-weight: 500;
-  border-bottom: 1px solid #f0f0f0;
 }
 
-.stop:last-child {
-  border-bottom: none;
+.stop::before,
+.stop::after {
+  content: '';
+  position: absolute;
+  left: 29px;
+}
+
+.stop::before {
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 30%, #000 32% 100%);
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+.stop::after {
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #000;
+  transform: translateX(-50%);
+}
+
+.stop:first-child::after {
+  top: 50%;
+}
+
+.stop:last-child::after {
+  bottom: 50%;
+}
+
+.stop-name.nearest {
+  display: inline-block;
+  margin: -4px -8px;
+  border-radius: 8px;
+  padding: 4px 8px;
+  background: #000;
+  color: #fff;
+}
+
+.nearest-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #fff;
 }
 
 .state {
   color: #6a6a6a;
   font-size: 14px;
   text-align: center;
-  padding: 24px 12px;
+  padding: 24px 20px;
 }
 
 .retry-button {
