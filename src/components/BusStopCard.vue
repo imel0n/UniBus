@@ -4,10 +4,12 @@ import heartIcon from '@/assets/icons/heart.png'
 
 const props = defineProps({
   name: { type: String, required: true },
+  road: { type: String, default: '' },
   distance: { type: String, required: true },
   isFavourite: { type: Boolean, default: false },
   // [{ code: 'A1', arrival: 3 | 'Arr' | 'NA' }, ...]
   services: { type: Array, required: true },
+  loading: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['toggle-favourite'])
@@ -40,7 +42,11 @@ function codeStyle(code) {
     <div class="header">
       <div class="info">
         <div class="name">{{ name }}</div>
-        <div class="distance">{{ distance }}</div>
+        <div class="meta">
+          <span v-if="road">{{ road }}</span>
+          <span v-if="road" class="dot">&middot;</span>
+          <span>{{ distance }}</span>
+        </div>
       </div>
       <button
         class="favourite-button"
@@ -54,7 +60,13 @@ function codeStyle(code) {
       </button>
     </div>
     <div class="services">
-      <div v-for="service in sortedServices" :key="service.code" class="service">
+      <template v-if="loading">
+        <div v-for="n in 3" :key="n" class="service">
+          <div class="code skeleton" />
+          <div class="arrival skeleton" />
+        </div>
+      </template>
+      <div v-for="service in sortedServices" v-else :key="service.code" class="service">
         <div class="code" :style="codeStyle(service.code)">{{ service.code }}</div>
         <div class="arrival">
           {{ typeof service.arrival === 'number' ? `${service.arrival} min` : service.arrival }}
@@ -83,10 +95,17 @@ function codeStyle(code) {
   font-weight: 700;
 }
 
-.distance {
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-size: 13px;
   color: #9a9a9a;
   margin-top: 2px;
+}
+
+.dot {
+  line-height: 1;
 }
 
 .favourite-button {
@@ -137,5 +156,32 @@ function codeStyle(code) {
 .arrival {
   font-size: 12px;
   color: #6a6a6a;
+}
+
+.skeleton {
+  background: #e2e2e2;
+  color: transparent;
+  border-radius: 6px;
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.code.skeleton {
+  width: 32px;
+  height: 22px;
+}
+
+.arrival.skeleton {
+  width: 30px;
+  height: 12px;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 </style>

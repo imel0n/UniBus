@@ -26,9 +26,11 @@ const cards = computed(() =>
   nearbyStops.value.map((stop) => ({
     code: stop.code,
     name: stop.name,
+    road: stop.road,
     distance: formatDistance(stop.distanceM),
     isFavourite: favourites[stop.code] ?? false,
     services: arrivalsByStop.value[stop.code] ?? [],
+    loading: !(stop.code in arrivalsByStop.value),
   }))
 )
 
@@ -66,9 +68,11 @@ onMounted(() => {
           v-for="stop in cards"
           :key="stop.code"
           :name="stop.name"
+          :road="stop.road"
           :distance="stop.distance"
           :is-favourite="stop.isFavourite"
           :services="stop.services"
+          :loading="stop.loading"
           @toggle-favourite="toggleFavourite(stop.code)"
         />
       </template>
@@ -81,7 +85,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: calc(env(safe-area-inset-top) + 66px) 12px 12px;
+  padding: calc(env(safe-area-inset-top) + 66px) 12px calc(env(safe-area-inset-bottom) + 76px);
 }
 
 .state {

@@ -14,6 +14,6 @@ export function haversineMetres(lat1, lon1, lat2, lon2) {
 }
 
 export function formatDistance(metres) {
-  if (metres < 1000) return `${Math.round(metres)} m`
-  return `${(metres / 1000).toFixed(1)} km`
+  if (metres < 1000) return `${Math.round(metres)}m`
+  return `${(metres / 1000).toFixed(1)}km`
 }
