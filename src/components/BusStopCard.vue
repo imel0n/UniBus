@@ -1,13 +1,18 @@
 <script setup>
 import { computed } from 'vue'
 import heartIcon from '@/assets/icons/heart.png'
+// Inlined rather than used as a mask/`<img>`: the markup carries its own sizing
+// and picks up the grey from `.deck-icon`.
+// import singleDeckerIcon from '@/assets/icons/single-decker.svg?raw'
+import doubleDeckerIcon from '@/assets/icons/double-decker.svg?raw'
 
 const props = defineProps({
   name: { type: String, required: true },
   road: { type: String, default: '' },
   distance: { type: String, default: '' },
   isFavourite: { type: Boolean, default: false },
-  // [{ code: 'A1', arrivals: ['Arr', 8, 'NA'] }, ...]
+  // [{ code: 'A1', arrivals: ['Arr', 8, 'NA'], deckTypes: ['DD', 'SD', null] }, ...]
+  // `deckTypes` is optional — without it the expanded rows just omit the icon.
   services: { type: Array, required: true },
   // Any CSS length. Empty means the expanded card grows as tall as it needs to.
   maxExpandedHeight: { type: String, default: '' },
@@ -54,6 +59,19 @@ function formatArrival(arrival) {
 // The first bus gets its own line, so only the two behind it go in the sub-line.
 function laterArrivals(arrivals) {
   return arrivals.slice(1, 3).filter((arrival) => arrival !== 'NA')
+}
+
+// Only double-deckers are flagged for now; the single-decker icon (also used for
+// bendy buses, which are single-deck vehicles) is parked until it looks right.
+const deckIcons = {
+  // SD: { icon: singleDeckerIcon, label: 'Single-decker bus' },
+  // BD: { icon: singleDeckerIcon, label: 'Bendy bus (single deck)' },
+  DD: { icon: doubleDeckerIcon, label: 'Double-decker bus' },
+}
+
+// Only the leading bus gets an icon — that's the timing the row is built around.
+function nextDeck(service) {
+  return deckIcons[service.deckTypes?.[0]] ?? null
 }
 
 function toggle() {
@@ -112,8 +130,16 @@ function toggle() {
       >
         <div class="row-code" :style="codeStyle(service.code)">{{ service.code }}</div>
         <div class="row-times">
-          <div class="next" :class="arrivalClass(service.arrivals[0])">
-            {{ formatArrival(service.arrivals[0]) }}
+          <div class="next-line" :class="arrivalClass(service.arrivals[0])">
+            <span
+              v-if="nextDeck(service)"
+              class="deck-icon"
+              role="img"
+              :aria-label="nextDeck(service).label"
+              :title="nextDeck(service).label"
+              v-html="nextDeck(service).icon"
+            />
+            <div class="next">{{ formatArrival(service.arrivals[0]) }}</div>
           </div>
           <div v-if="laterArrivals(service.arrivals).length" class="later">
             {{ laterArrivals(service.arrivals).map(formatArrival).join(', ') }}
@@ -266,19 +292,40 @@ function toggle() {
   text-align: right;
 }
 
-.next {
-  font-size: 20px;
-  font-weight: 700;
+.next-line {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
   color: #000;
-  line-height: 1.1;
 }
 
-.next.soon {
+.next-line.soon {
   color: #d97706;
 }
 
-.next.urgent {
+.next-line.urgent {
   color: #16a34a;
+}
+
+.next {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* Deliberately neutral: the vehicle type is reference detail, so it stays grey
+   while the timing beside it keeps the urgency colour. */
+.deck-icon {
+  display: flex;
+  flex-shrink: 0;
+  color: #9a9a9a;
+}
+
+.deck-icon :deep(svg) {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
 .later {

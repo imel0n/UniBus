@@ -7,10 +7,22 @@
  * minute reads "Arr", and a missing estimate reads "NA".
  */
 export function mapArrivalServices(ltaServices = []) {
-  return ltaServices.map((service) => ({
-    code: service.ServiceNo,
-    arrivals: [service.NextBus, service.NextBus2, service.NextBus3].map(toArrival),
-  }))
+  return ltaServices.map((service) => {
+    const buses = [service.NextBus, service.NextBus2, service.NextBus3]
+    return {
+      code: service.ServiceNo,
+      arrivals: buses.map(toArrival),
+      // Parallel to `arrivals`, so index n describes the bus arriving at n.
+      deckTypes: buses.map(toDeckType),
+    }
+  })
+}
+
+// DataMall reports SD (single deck), DD (double deck) or BD (bendy); anything
+// else — including a bus with no estimate at all — is left undeclared.
+function toDeckType(nextBus) {
+  const type = nextBus?.Type
+  return type === 'SD' || type === 'DD' || type === 'BD' ? type : null
 }
 
 function toArrival(nextBus) {
