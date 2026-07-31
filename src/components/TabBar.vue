@@ -1,6 +1,7 @@
 <script setup>
 import mapPinIcon from '@/assets/icons/map-pin.png'
 import heartIcon from '@/assets/icons/heart.png'
+import mapIcon from '@/assets/icons/map.png'
 </script>
 
 <template>
@@ -18,6 +19,13 @@ import heartIcon from '@/assets/icons/heart.png'
         :style="{ maskImage: `url(${heartIcon})`, WebkitMaskImage: `url(${heartIcon})` }"
       />
       <span class="label">Favourites</span>
+    </RouterLink>
+    <RouterLink to="/find" class="tab">
+      <span
+        class="icon"
+        :style="{ maskImage: `url(${mapIcon})`, WebkitMaskImage: `url(${mapIcon})` }"
+      />
+      <span class="label">Find Stop</span>
     </RouterLink>
   </nav>
 </template>
