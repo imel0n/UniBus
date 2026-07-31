@@ -3,6 +3,7 @@ import { computed, onActivated, onBeforeUnmount, onMounted, ref, watch } from 'v
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import BusStopCard from '@/components/BusStopCard.vue'
+import CircularButton from '@/components/CircularButton.vue'
 import { useBusStopsStore } from '@/stores/busStops'
 import { useFavouritesStore } from '@/stores/favourites'
 import { useGeolocation } from '@/composables/useGeolocation'
@@ -218,10 +219,9 @@ watch(() => busStopsStore.status, renderVisibleMarkers)
 
     <p v-if="belowMarkerZoom && !searchResults.length" class="zoom-hint">Zoom in to see stops</p>
 
-    <button
+    <CircularButton
       class="recenter-button"
       :class="{ 'recenter-button--raised': selectedStop }"
-      type="button"
       aria-label="Recentre map on my location"
       @click="recenterOnUser"
     >
@@ -230,7 +230,7 @@ watch(() => busStopsStore.status, renderVisibleMarkers)
         <path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke-linecap="round" />
         <circle cx="12" cy="12" r="7" />
       </svg>
-    </button>
+    </CircularButton>
 
     <Transition name="card">
       <div v-if="selectedStop" class="card">
@@ -347,24 +347,11 @@ watch(() => busStopsStore.status, renderVisibleMarkers)
   right: 24px;
   bottom: calc(env(safe-area-inset-bottom) + 82px);
   z-index: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 54px;
-  height: 54px;
-  border: none;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0px 16px rgba(0, 0, 0, 0.3);
   transition: bottom 0.2s ease;
 }
 
 .recenter-button--raised {
   bottom: calc(env(safe-area-inset-bottom) + 76px + 30vh);
-}
-
-.recenter-button:active {
-  background: #f5f5f5;
 }
 
 .card {

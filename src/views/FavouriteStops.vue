@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted } from 'vue'
 import BusStopCard from '@/components/BusStopCard.vue'
+import CircularButton from '@/components/CircularButton.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { useFavouritesStore } from '@/stores/favourites'
 import { useGeolocation } from '@/composables/useGeolocation'
@@ -25,7 +26,7 @@ const sortedStops = computed(() => {
 
 const stopCodes = computed(() => sortedStops.value.map((stop) => stop.code))
 
-const { arrivalsByStop } = useArrivalsPolling(stopCodes)
+const { arrivalsByStop, refresh: refreshArrivals } = useArrivalsPolling(stopCodes)
 
 const cards = computed(() =>
   sortedStops.value.map((stop) => ({
@@ -38,6 +39,11 @@ const cards = computed(() =>
     lon: stop.lon,
   })),
 )
+
+function refreshFavourites() {
+  locate()
+  refreshArrivals()
+}
 
 onMounted(() => {
   locate()
@@ -72,6 +78,20 @@ onMounted(() => {
         />
       </template>
     </div>
+
+    <CircularButton
+      class="refresh-button"
+      aria-label="Re-poll bus timings"
+      @click="refreshFavourites"
+    >
+      <svg viewBox="0 0 24 24" width="22" height="22">
+        <path
+          d="M12 2 L21 21 L12 17 L3 21 Z"
+          fill="#000000"
+          transform="rotate(-45 12 12)"
+        />
+      </svg>
+    </CircularButton>
   </div>
 </template>
 
@@ -99,5 +119,12 @@ onMounted(() => {
   font: inherit;
   font-weight: 600;
   color: #000;
+}
+
+.refresh-button {
+  position: fixed;
+  right: 24px;
+  bottom: calc(env(safe-area-inset-bottom) + 82px);
+  z-index: 900;
 }
 </style>
