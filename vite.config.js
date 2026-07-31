@@ -1,53 +1,72 @@
 import { fileURLToPath, URL } from 'node:url'
 
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [
-    vue(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      // Lets the service worker be tested with `npm run dev`, not just after a build.
-      devOptions: { enabled: true },
-      manifest: {
-        name: 'UniBus',
-        short_name: 'UniBus',
-        description: 'Bus arrival times for nearby and favourite stops.',
-        start_url: '/',
-        scope: '/',
-        display: 'standalone',
-        orientation: 'portrait',
-        background_color: '#000000',
-        theme_color: '#000000',
-        icons: [
-          { src: '/android-chrome-192x192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/android-chrome-512x512.png', sizes: '512x512', type: 'image/png' },
-          // Padded copy so Android's circle/squircle mask can't clip the bus.
-          {
-            src: '/maskable-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'maskable',
-          },
-        ],
+export default defineConfig(({ mode }) => {
+  // Empty prefix so non-VITE_ vars (which must stay server-side) are readable here.
+  const env = loadEnv(mode, process.cwd(), '')
+
+  if (!env.LTA_DATAMALL_KEY) {
+    console.warn('[vite] LTA_DATAMALL_KEY is missing from .env.local — /api/lta requests will fail.')
+  }
+
+  return {
+    plugins: [
+      vue(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        // Lets the service worker be tested with `npm run dev`, not just after a build.
+        devOptions: { enabled: true },
+        manifest: {
+          name: 'UniBus',
+          short_name: 'UniBus',
+          description: 'Bus arrival times for nearby and favourite stops.',
+          start_url: '/',
+          scope: '/',
+          display: 'standalone',
+          orientation: 'portrait',
+          background_color: '#000000',
+          theme_color: '#000000',
+          icons: [
+            { src: '/android-chrome-192x192.png', sizes: '192x192', type: 'image/png' },
+            { src: '/android-chrome-512x512.png', sizes: '512x512', type: 'image/png' },
+            // Padded copy so Android's circle/squircle mask can't clip the bus.
+            {
+              src: '/maskable-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable',
+            },
+          ],
+        },
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          // Serve index.html for any navigation so client-side routes work offline.
+          navigateFallback: '/index.html',
+        },
+      }),
+    ],
+    server: {
+      // Required for the Cloudflare tunnel (npm run dev:tunnel) to reach the dev server.
+      allowedHosts: ['unibusdev.hejieming.com'],
+      proxy: {
+        // DataMall sends no CORS headers and the key must never reach the browser,
+        // so all LTA calls go through here with the header injected server-side.
+        '/api/lta': {
+          target: 'https://datamall2.mytransport.sg',
+          changeOrigin: true,
+          rewrite: (p) => p.replace(/^\/api\/lta/, '/ltaodataservice'),
+          headers: { AccountKey: env.LTA_DATAMALL_KEY },
+        },
       },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        // Serve index.html for any navigation so client-side routes work offline.
-        navigateFallback: '/index.html',
-      },
-    }),
-  ],
-  server: {
-    // Required for the Cloudflare tunnel (npm run dev:tunnel) to reach the dev server.
-    allowedHosts: ['unibusdev.hejieming.com'],
-  },
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
-  },
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+      },
+    },
+  }
 })

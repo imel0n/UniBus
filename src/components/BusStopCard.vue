@@ -6,13 +6,21 @@ const props = defineProps({
   name: { type: String, required: true },
   distance: { type: String, required: true },
   isFavourite: { type: Boolean, default: false },
-  services: { type: Array, required: true }, // [{ code: 'A1', arrival: 3 }, ...]
+  // [{ code: 'A1', arrival: 3 | 'Arr' | 'NA' }, ...]
+  services: { type: Array, required: true },
 })
 
 const emit = defineEmits(['toggle-favourite'])
 
+// 'Arr' sorts ahead of every timed bus; 'NA' sinks to the bottom.
+function arrivalRank(arrival) {
+  if (arrival === 'Arr') return -1
+  if (typeof arrival === 'number') return arrival
+  return Infinity
+}
+
 const sortedServices = computed(() => {
-  return [...props.services].sort((a, b) => a.arrival - b.arrival)
+  return [...props.services].sort((a, b) => arrivalRank(a.arrival) - arrivalRank(b.arrival))
 })
 
 const codeColors = {
@@ -48,7 +56,9 @@ function codeStyle(code) {
     <div class="services">
       <div v-for="service in sortedServices" :key="service.code" class="service">
         <div class="code" :style="codeStyle(service.code)">{{ service.code }}</div>
-        <div class="arrival">{{ service.arrival }} min</div>
+        <div class="arrival">
+          {{ typeof service.arrival === 'number' ? `${service.arrival} min` : service.arrival }}
+        </div>
       </div>
     </div>
   </div>
