@@ -46,6 +46,8 @@ export default defineConfig(({ mode }) => {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
           // Serve index.html for any navigation so client-side routes work offline.
           navigateFallback: '/index.html',
+          // ...except API paths, which must always reach the proxy.
+          navigateFallbackDenylist: [/^\/api\//],
         },
       }),
     ],
