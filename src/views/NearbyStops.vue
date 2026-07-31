@@ -85,12 +85,18 @@ onMounted(() => {
       aria-label="Re-poll nearby bus stops"
       @click="refreshNearby"
     >
-      <svg viewBox="0 0 24 24" width="22" height="22">
-        <path
-          d="M12 2 L21 21 L12 17 L3 21 Z"
-          fill="#000000"
-          transform="rotate(-45 12 12)"
-        />
+      <svg
+        viewBox="0 0 24 24"
+        width="22"
+        height="22"
+        fill="none"
+        stroke="#000000"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M23 4v6h-6" />
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
       </svg>
     </CircularButton>
   </div>

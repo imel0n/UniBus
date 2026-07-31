@@ -24,9 +24,12 @@ const { coords, locate } = useGeolocation()
 
 const mapEl = ref(null)
 const searchInput = ref(null)
+const cardEl = ref(null)
 const selectedStop = ref(null)
 const query = ref('')
 const belowMarkerZoom = ref(true)
+const cardHeight = ref(0)
+let cardResizeObserver = null
 
 // Leaflet instances are deliberately outside Vue's reactivity — wrapping them in
 // proxies breaks their internal identity checks.
@@ -37,8 +40,18 @@ let userHasMovedMap = false
 let hasCentredOnUser = false
 let recenterRequested = false
 
-const baseIcon = L.icon({ iconUrl: stopMarkerIcon, iconSize: [26, 26], iconAnchor: [13, 13] })
-const activeIcon = L.icon({ iconUrl: stopMarkerIcon, iconSize: [38, 38], iconAnchor: [19, 19] })
+const baseIcon = L.icon({
+  iconUrl: stopMarkerIcon,
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+  className: 'stop-marker-icon stop-marker-icon--base',
+})
+const activeIcon = L.icon({
+  iconUrl: stopMarkerIcon,
+  iconSize: [38, 38],
+  iconAnchor: [19, 19],
+  className: 'stop-marker-icon stop-marker-icon--active',
+})
 
 const searchResults = computed(() => {
   const q = query.value.trim().toLowerCase()
@@ -172,6 +185,21 @@ onActivated(() => {
 onBeforeUnmount(() => {
   map?.remove()
   map = null
+  cardResizeObserver?.disconnect()
+  cardResizeObserver = null
+})
+
+watch(cardEl, (el) => {
+  cardResizeObserver?.disconnect()
+  cardResizeObserver = null
+  if (!el) {
+    cardHeight.value = 0
+    return
+  }
+  cardResizeObserver = new ResizeObserver(([entry]) => {
+    cardHeight.value = entry.contentRect.height
+  })
+  cardResizeObserver.observe(el)
 })
 
 watch(coords, (value) => {
@@ -221,7 +249,7 @@ watch(() => busStopsStore.status, renderVisibleMarkers)
 
     <CircularButton
       class="recenter-button"
-      :class="{ 'recenter-button--raised': selectedStop }"
+      :style="selectedStop ? { bottom: `calc(env(safe-area-inset-bottom) + 88px + ${cardHeight}px)` } : null"
       aria-label="Recentre map on my location"
       @click="recenterOnUser"
     >
@@ -233,7 +261,7 @@ watch(() => busStopsStore.status, renderVisibleMarkers)
     </CircularButton>
 
     <Transition name="card">
-      <div v-if="selectedStop" class="card">
+      <div v-if="selectedStop" ref="cardEl" class="card">
         <BusStopCard
           :name="selectedStop.name"
           :road="selectedStop.road"
@@ -350,10 +378,6 @@ watch(() => busStopsStore.status, renderVisibleMarkers)
   transition: bottom 0.2s ease;
 }
 
-.recenter-button--raised {
-  bottom: calc(env(safe-area-inset-bottom) + 76px + 30vh);
-}
-
 .card {
   position: absolute;
   left: 12px;
@@ -379,5 +403,13 @@ watch(() => busStopsStore.status, renderVisibleMarkers)
 
 :deep(.leaflet-control-attribution) {
   display: none;
+}
+
+:deep(.stop-marker-icon--base) {
+  opacity: 0.5;
+}
+
+:deep(.stop-marker-icon--active) {
+  opacity: 1;
 }
 </style>
