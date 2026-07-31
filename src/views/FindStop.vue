@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onActivated, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import BusStopCard from '@/components/BusStopCard.vue'
@@ -18,6 +18,13 @@ const FOCUS_ZOOM = 17
 // Below this, the island holds far too many stops to be legible or tappable.
 const MIN_MARKER_ZOOM = 16
 const MAX_RESULTS = 8
+// One duration for every deliberate move, so consecutive ones read as one motion.
+const MOVE_DURATION = 0.45
+// Matches the card's enter/resize transition, so the map tracks it rather than
+// racing it when the card grows.
+const CARD_FOLLOW_DURATION = 0.2
+// GPS jitter below this isn't worth a second animation after the recentre flight.
+const RECENTRE_NUDGE_METRES = 10
 
 const busStopsStore = useBusStopsStore()
 const favouritesStore = useFavouritesStore()
@@ -43,6 +50,12 @@ const markersByCode = new Map()
 let userHasMovedMap = false
 let hasCentredOnUser = false
 let recenterRequested = false
+let recentreTarget = null
+// Our own animations fire the same move events a drag does, so they have to be
+// counted out before a move can be attributed to the rider.
+let programmaticMoves = 0
+// Cleared as soon as the rider takes over, so a growing card stops pulling the map.
+let followSelectedStop = false
 
 const baseIcon = L.icon({
   iconUrl: stopMarkerIcon,
@@ -149,7 +162,59 @@ function setSelected(stop) {
   const previous = selectedStop.value
   if (previous) markersByCode.get(previous.code)?.setIcon(baseIcon)
   selectedStop.value = stop
+  followSelectedStop = Boolean(stop)
   if (stop) markersByCode.get(stop.code)?.setIcon(activeIcon)
+}
+
+// Leaflet's flyTo arcs out and back along the path, which is right for a jump
+// across the island but reads as a lurch when the zoom isn't changing at all.
+function moveMap(latlng, zoom, duration = MOVE_DURATION) {
+  if (!map) return
+
+  programmaticMoves += 1
+  let released = false
+  const release = () => {
+    if (released) return
+    released = true
+    programmaticMoves -= 1
+    map?.off('moveend', release)
+    clearTimeout(timer)
+  }
+  // A move that changes nothing never reaches moveend, so don't rely on it alone.
+  const timer = setTimeout(release, duration * 1000 + 400)
+  map.on('moveend', release)
+
+  if (duration === 0) {
+    map.setView(latlng, zoom, { animate: false })
+  } else if (Math.abs(zoom - map.getZoom()) < 0.01) {
+    map.panTo(latlng, { animate: true, duration })
+  } else {
+    map.flyTo(latlng, zoom, { duration })
+  }
+}
+
+// The search field and the open card each cover a slice of the map, so the true
+// centre of what the rider can see sits above the container's midpoint.
+async function centreOnStop(stop, { zoom, duration } = {}) {
+  if (!map) return
+
+  // Let the card mount (or re-measure for a taller one) before reading its edge.
+  await nextTick()
+  if (!map || !mapEl.value) return
+
+  const targetZoom = zoom ?? map.getZoom()
+  const size = map.getSize()
+  const mapTop = mapEl.value.getBoundingClientRect().top
+  const topBound = searchInput.value ? searchInput.value.getBoundingClientRect().bottom - mapTop : 0
+  // offsetTop is the card's settled layout position: a rect would read the enter
+  // transition's translate, and both share .find-stop's box with the map.
+  const bottomBound = cardEl.value ? cardEl.value.offsetTop : size.y
+  const visibleCentreY = (topBound + bottomBound) / 2
+
+  // Push the map centre south of the stop by the same gap, so the stop lands on
+  // the visible centre rather than behind the card.
+  const point = map.project([stop.lat, stop.lon], targetZoom).add([0, size.y / 2 - visibleCentreY])
+  moveMap(map.unproject(point, targetZoom), targetZoom, duration)
 }
 
 function renderVisibleMarkers() {
@@ -180,7 +245,10 @@ function renderVisibleMarkers() {
       icon: stop.code === selectedStop.value?.code ? activeIcon : baseIcon,
       keyboard: false,
     })
-    marker.on('click', () => setSelected(stop))
+    marker.on('click', () => {
+      setSelected(stop)
+      centreOnStop(stop)
+    })
     marker.addTo(markerLayer)
     markersByCode.set(stop.code, marker)
   }
@@ -197,16 +265,21 @@ function chooseResult(stop) {
   // Otherwise the on-screen keyboard stays up and covers the card.
   searchInput.value?.blur()
   setSelected(stop)
-  map.flyTo([stop.lat, stop.lon], FOCUS_ZOOM, { duration: 0.6 })
+  centreOnStop(stop, { zoom: FOCUS_ZOOM })
 }
 
 function recenterOnUser() {
   // iOS gates the compass behind a gesture, so piggyback on this tap.
   enableHeading()
+  followSelectedStop = false
+  recenterRequested = true
+  // Move on the cached fix straight away so the tap feels answered; the watcher
+  // only follows up if the fresh fix lands somewhere meaningfully different.
   if (coords.value) {
-    map.flyTo([coords.value.lat, coords.value.lon], FOCUS_ZOOM, { duration: 0.6 })
+    recentreTarget = coords.value
+    moveMap([coords.value.lat, coords.value.lon], FOCUS_ZOOM)
   } else {
-    recenterRequested = true
+    recentreTarget = null
   }
   locate()
 }
@@ -236,8 +309,10 @@ onMounted(() => {
 
   map.on('moveend zoomend', renderVisibleMarkers)
   map.on('click', () => setSelected(null))
-  map.once('movestart', () => {
+  map.on('movestart', () => {
+    if (programmaticMoves > 0) return
     userHasMovedMap = true
+    followSelectedStop = false
   })
 })
 
@@ -271,6 +346,14 @@ watch(cardEl, (el) => {
 
 watch(heading, renderHeading)
 
+// Arrivals land after the card opens, and expanding it grows it again — both move
+// the visible centre, so the stop has to be re-centred against the new one.
+watch(cardHeight, (_height, previous) => {
+  // The 0 -> first measurement is the card opening, which centreOnStop already read.
+  if (!previous || !followSelectedStop || !selectedStop.value) return
+  centreOnStop(selectedStop.value, { duration: CARD_FOLLOW_DURATION })
+})
+
 watch(coords, (value) => {
   if (!value || !map) return
 
@@ -278,14 +361,22 @@ watch(coords, (value) => {
 
   if (recenterRequested) {
     recenterRequested = false
-    map.flyTo([value.lat, value.lon], FOCUS_ZOOM, { duration: 0.6 })
+    const drift = recentreTarget
+      ? haversineMetres(recentreTarget.lat, recentreTarget.lon, value.lat, value.lon)
+      : Infinity
+    recentreTarget = null
+    // Chasing a couple of metres of GPS jitter with a second animation is the
+    // wobble; let the dot settle under a map that's already stopped.
+    if (drift > RECENTRE_NUDGE_METRES) moveMap([value.lat, value.lon], FOCUS_ZOOM)
     return
   }
 
   // A slow GPS fix shouldn't yank the map out from under someone already panning.
   if (hasCentredOnUser || userHasMovedMap) return
   hasCentredOnUser = true
-  map.setView([value.lat, value.lon], FOCUS_ZOOM)
+  // Instant: the map is still on the island-wide overview, and flying that whole
+  // distance on load is more disorienting than simply arriving.
+  moveMap([value.lat, value.lon], FOCUS_ZOOM, 0)
 })
 
 watch(() => busStopsStore.status, renderVisibleMarkers)
