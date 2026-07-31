@@ -48,6 +48,19 @@ export default defineConfig(({ mode }) => {
           navigateFallback: '/index.html',
           // ...except API paths, which must always reach the proxy.
           navigateFallbackDenylist: [/^\/api\//],
+          runtimeCaching: [
+            {
+              // Map tiles are immutable, so areas already visited stay usable offline.
+              urlPattern: /^https:\/\/[a-d]\.basemaps\.cartocdn\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'carto-tiles',
+                expiration: { maxEntries: 300, maxAgeSeconds: 30 * 24 * 60 * 60 },
+                // Tiles come back opaque (status 0) because they're cross-origin.
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+          ],
         },
       }),
     ],

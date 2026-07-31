@@ -12,12 +12,22 @@ app.use(router)
 
 document.addEventListener('contextmenu', (event) => event.preventDefault())
 
-document.addEventListener('gesturestart', (event) => event.preventDefault())
-document.addEventListener('gesturechange', (event) => event.preventDefault())
+// The map owns its own pinch/zoom gestures, so blocking them there would break it.
+// Touch events retarget to where the touch began, so this holds mid-gesture too.
+function insideMap(event) {
+  return event.target instanceof Element && event.target.closest('.leaflet-container') !== null
+}
+
+document.addEventListener('gesturestart', (event) => {
+  if (!insideMap(event)) event.preventDefault()
+})
+document.addEventListener('gesturechange', (event) => {
+  if (!insideMap(event)) event.preventDefault()
+})
 document.addEventListener(
   'touchmove',
   (event) => {
-    if (event.touches.length > 1) event.preventDefault()
+    if (event.touches.length > 1 && !insideMap(event)) event.preventDefault()
   },
   { passive: false },
 )
