@@ -34,10 +34,11 @@ export const useBusStopsStore = defineStore('busStops', () => {
     }
   }
 
-  async function ensureLoaded() {
-    if (status.value === 'ready' && stops.value.length) return
+  /** `force` skips both the in-memory list and the cache, for a deliberate reload. */
+  async function ensureLoaded({ force = false } = {}) {
+    if (!force && status.value === 'ready' && stops.value.length) return
 
-    const cached = readCache()
+    const cached = force ? null : readCache()
     if (cached) {
       stops.value = cached
       status.value = 'ready'

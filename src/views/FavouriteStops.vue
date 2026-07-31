@@ -6,6 +6,7 @@ import PageHeader from '@/components/PageHeader.vue'
 import { useFavouritesStore } from '@/stores/favourites'
 import { useGeolocation } from '@/composables/useGeolocation'
 import { useArrivalsPolling } from '@/composables/useArrivalsPolling'
+import { useExpandedStops } from '@/composables/useExpandedStops'
 import { haversineMetres, formatDistance } from '@/utils/geo'
 
 const favouritesStore = useFavouritesStore()
@@ -27,6 +28,9 @@ const sortedStops = computed(() => {
 const stopCodes = computed(() => sortedStops.value.map((stop) => stop.code))
 
 const { arrivalsByStop, refresh: refreshArrivals } = useArrivalsPolling(stopCodes)
+const { isExpanded, setExpanded, collapseAll } = useExpandedStops(stopCodes)
+
+const menuItems = [{ id: 'collapse-all', label: 'Collapse all stops' }]
 
 const cards = computed(() =>
   sortedStops.value.map((stop) => ({
@@ -43,6 +47,10 @@ const cards = computed(() =>
 function refreshFavourites() {
   locate()
   refreshArrivals()
+}
+
+function runMenuAction(id) {
+  if (id === 'collapse-all') collapseAll()
 }
 
 onMounted(() => {
@@ -74,6 +82,8 @@ onMounted(() => {
           :distance="stop.distance"
           :is-favourite="true"
           :services="stop.services"
+          :expanded="isExpanded(stop.code)"
+          @update:expanded="setExpanded(stop.code, $event)"
           @toggle-favourite="favouritesStore.toggle(stop)"
         />
       </template>
@@ -82,7 +92,9 @@ onMounted(() => {
     <CircularButton
       class="refresh-button"
       aria-label="Re-poll bus timings"
+      :menu-items="menuItems"
       @click="refreshFavourites"
+      @select="runMenuAction"
     >
       <svg
         viewBox="0 0 24 24"

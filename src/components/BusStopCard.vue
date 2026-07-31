@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import heartIcon from '@/assets/icons/heart.png'
 
 const props = defineProps({
@@ -15,7 +15,9 @@ const props = defineProps({
 
 const emit = defineEmits(['toggle-favourite'])
 
-const expanded = ref(false)
+// Optional v-model: bind it to keep expansion alive across re-renders, or leave
+// it unbound and the card just holds the state itself.
+const expanded = defineModel('expanded', { type: Boolean, default: false })
 
 // 'Arr' sorts ahead of every timed bus; 'NA' sinks to the bottom.
 function arrivalRank(arrival) {

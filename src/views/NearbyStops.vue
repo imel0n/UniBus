@@ -7,6 +7,7 @@ import { useBusStopsStore } from '@/stores/busStops'
 import { useFavouritesStore } from '@/stores/favourites'
 import { useGeolocation } from '@/composables/useGeolocation'
 import { useArrivalsPolling } from '@/composables/useArrivalsPolling'
+import { useExpandedStops } from '@/composables/useExpandedStops'
 import { formatDistance } from '@/utils/geo'
 
 const busStopsStore = useBusStopsStore()
@@ -21,6 +22,9 @@ const nearbyStops = computed(() => {
 const stopCodes = computed(() => nearbyStops.value.map((stop) => stop.code))
 
 const { arrivalsByStop, refresh: refreshArrivals } = useArrivalsPolling(stopCodes)
+const { isExpanded, setExpanded, collapseAll } = useExpandedStops(stopCodes)
+
+const menuItems = [{ id: 'collapse-all', label: 'Collapse all stops' }]
 
 const cards = computed(() =>
   nearbyStops.value.map((stop) => ({
@@ -38,6 +42,10 @@ const cards = computed(() =>
 function refreshNearby() {
   locate()
   refreshArrivals()
+}
+
+function runMenuAction(id) {
+  if (id === 'collapse-all') collapseAll()
 }
 
 onMounted(() => {
@@ -60,7 +68,8 @@ onMounted(() => {
         <p>Couldn’t load bus stops.</p>
         <button class="retry-button" @click="busStopsStore.ensureLoaded()">Try again</button>
       </div>
-      <div v-else-if="locationStatus === 'locating' || locationStatus === 'idle'" class="state">
+      <!-- Only before the first fix — a refresh re-locates without tearing the list down. -->
+      <div v-else-if="!coords" class="state">
         <p>Locating you…</p>
       </div>
       <div v-else-if="busStopsStore.status !== 'ready'" class="state">
@@ -75,6 +84,8 @@ onMounted(() => {
           :distance="stop.distance"
           :is-favourite="stop.isFavourite"
           :services="stop.services"
+          :expanded="isExpanded(stop.code)"
+          @update:expanded="setExpanded(stop.code, $event)"
           @toggle-favourite="favouritesStore.toggle(stop)"
         />
       </template>
@@ -83,7 +94,9 @@ onMounted(() => {
     <CircularButton
       class="refresh-button"
       aria-label="Re-poll nearby bus stops"
+      :menu-items="menuItems"
       @click="refreshNearby"
+      @select="runMenuAction"
     >
       <svg
         viewBox="0 0 24 24"
