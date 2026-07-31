@@ -1,6 +1,7 @@
 /**
  * Maps a BusArrival response's `Services` into the shape BusStopCard expects.
- * Only the first bus (`NextBus`) is surfaced for now.
+ * The three buses DataMall returns are surfaced in order — the collapsed card
+ * shows the first, the expanded card shows all three.
  *
  * Per LTA's front-end advisement, derived minutes are rounded *down*; under a
  * minute reads "Arr", and a missing estimate reads "NA".
@@ -8,7 +9,7 @@
 export function mapArrivalServices(ltaServices = []) {
   return ltaServices.map((service) => ({
     code: service.ServiceNo,
-    arrival: toArrival(service.NextBus),
+    arrivals: [service.NextBus, service.NextBus2, service.NextBus3].map(toArrival),
   }))
 }
 

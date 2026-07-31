@@ -263,11 +263,13 @@ watch(() => busStopsStore.status, renderVisibleMarkers)
     <Transition name="card">
       <div v-if="selectedStop" ref="cardEl" class="card">
         <BusStopCard
+          :key="selectedStop.code"
           :name="selectedStop.name"
           :road="selectedStop.road"
           :distance="selectedDistance"
           :is-favourite="favouritesStore.isFavourite(selectedStop.code)"
           :services="selectedServices"
+          max-expanded-height="45vh"
           @toggle-favourite="favouritesStore.toggle(selectedStop)"
         />
       </div>
