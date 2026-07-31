@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import BusStopCard from '@/components/BusStopCard.vue'
@@ -26,6 +27,7 @@ const CARD_FOLLOW_DURATION = 0.2
 // GPS jitter below this isn't worth a second animation after the recentre flight.
 const RECENTRE_NUDGE_METRES = 10
 
+const router = useRouter()
 const busStopsStore = useBusStopsStore()
 const favouritesStore = useFavouritesStore()
 const { coords, locate } = useGeolocation()
@@ -411,7 +413,11 @@ watch(() => busStopsStore.status, renderVisibleMarkers)
 
     <CircularButton
       class="recenter-button"
-      :style="selectedStop ? { bottom: `calc(env(safe-area-inset-bottom) + 88px + ${cardHeight}px)` } : null"
+      :style="
+        selectedStop
+          ? { bottom: `calc(env(safe-area-inset-bottom) + 88px + ${cardHeight}px)` }
+          : null
+      "
       aria-label="Recentre map on my location"
       @click="recenterOnUser"
     >
@@ -433,6 +439,7 @@ watch(() => busStopsStore.status, renderVisibleMarkers)
           :services="selectedServices"
           max-expanded-height="45vh"
           @toggle-favourite="favouritesStore.toggle(selectedStop)"
+          @select-service="router.push(`/bus/${$event}`)"
         />
       </div>
     </Transition>

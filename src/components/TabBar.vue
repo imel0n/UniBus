@@ -6,21 +6,21 @@ import mapIcon from '@/assets/icons/map.png'
 
 <template>
   <nav>
-    <RouterLink to="/" class="tab">
+    <RouterLink to="/" replace class="tab">
       <span
         class="icon"
         :style="{ maskImage: `url(${mapPinIcon})`, WebkitMaskImage: `url(${mapPinIcon})` }"
       />
       <span class="label">Nearby</span>
     </RouterLink>
-    <RouterLink to="/favourites" class="tab">
+    <RouterLink to="/favourites" replace class="tab">
       <span
         class="icon"
         :style="{ maskImage: `url(${heartIcon})`, WebkitMaskImage: `url(${heartIcon})` }"
       />
       <span class="label">Favourites</span>
     </RouterLink>
-    <RouterLink to="/find" class="tab">
+    <RouterLink to="/find" replace class="tab">
       <span
         class="icon"
         :style="{ maskImage: `url(${mapIcon})`, WebkitMaskImage: `url(${mapIcon})` }"

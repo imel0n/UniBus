@@ -28,3 +28,19 @@ export async function fetchAllBusStops() {
 export function fetchBusArrivals(busStopCode) {
   return ltaGet(`/v3/BusArrival?BusStopCode=${busStopCode}`)
 }
+
+/**
+ * The route table is one row per (service, direction, stop), ~26,000 in total,
+ * and DataMall exposes no per-service filter — so it's pulled whole and indexed
+ * client-side, same as the stop list.
+ */
+export async function fetchAllBusRoutes() {
+  const rows = []
+  for (let skip = 0; ; skip += PAGE_SIZE) {
+    const data = await ltaGet(`/BusRoutes?$skip=${skip}`)
+    const page = data.value ?? []
+    rows.push(...page)
+    if (page.length < PAGE_SIZE) break
+  }
+  return rows
+}

@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import BusStopCard from '@/components/BusStopCard.vue'
 import CircularButton from '@/components/CircularButton.vue'
 import PageHeader from '@/components/PageHeader.vue'
@@ -9,6 +10,7 @@ import { useArrivalsPolling } from '@/composables/useArrivalsPolling'
 import { useExpandedStops } from '@/composables/useExpandedStops'
 import { haversineMetres, formatDistance } from '@/utils/geo'
 
+const router = useRouter()
 const favouritesStore = useFavouritesStore()
 const { coords, locate } = useGeolocation()
 
@@ -85,6 +87,7 @@ onMounted(() => {
           :expanded="isExpanded(stop.code)"
           @update:expanded="setExpanded(stop.code, $event)"
           @toggle-favourite="favouritesStore.toggle(stop)"
+          @select-service="router.push(`/bus/${$event}`)"
         />
       </template>
     </div>

@@ -13,7 +13,7 @@ const props = defineProps({
   maxExpandedHeight: { type: String, default: '' },
 })
 
-const emit = defineEmits(['toggle-favourite'])
+const emit = defineEmits(['toggle-favourite', 'select-service'])
 
 // Optional v-model: bind it to keep expansion alive across re-renders, or leave
 // it unbound and the card just holds the state itself.
@@ -27,9 +27,7 @@ function arrivalRank(arrival) {
 }
 
 const sortedServices = computed(() => {
-  return [...props.services].sort(
-    (a, b) => arrivalRank(a.arrivals[0]) - arrivalRank(b.arrivals[0]),
-  )
+  return [...props.services].sort((a, b) => arrivalRank(a.arrivals[0]) - arrivalRank(b.arrivals[0]))
 })
 
 const codeColors = {
@@ -102,7 +100,16 @@ function toggle() {
       :style="maxExpandedHeight ? { maxHeight: maxExpandedHeight } : null"
       @click.stop
     >
-      <div v-for="service in sortedServices" :key="service.code" class="row">
+      <div
+        v-for="service in sortedServices"
+        :key="service.code"
+        class="row"
+        role="button"
+        tabindex="0"
+        @click="emit('select-service', service.code)"
+        @keydown.enter.prevent="emit('select-service', service.code)"
+        @keydown.space.prevent="emit('select-service', service.code)"
+      >
         <div class="row-code" :style="codeStyle(service.code)">{{ service.code }}</div>
         <div class="row-times">
           <div class="next" :class="arrivalClass(service.arrivals[0])">
