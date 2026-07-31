@@ -3,7 +3,11 @@ import TabBar from './components/TabBar.vue'
 </script>
 
 <template>
-  <RouterView />
+  <RouterView v-slot="{ Component }">
+    <KeepAlive>
+      <component :is="Component" />
+    </KeepAlive>
+  </RouterView>
   <TabBar />
 </template>
 

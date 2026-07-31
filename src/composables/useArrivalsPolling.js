@@ -1,4 +1,4 @@
-import { ref, watch, onScopeDispose } from 'vue'
+import { ref, watch, onScopeDispose, onActivated, onDeactivated } from 'vue'
 import { fetchBusArrivals } from '@/services/ltaApi'
 import { mapArrivalServices } from '@/utils/arrivals'
 
@@ -69,6 +69,14 @@ export function useArrivalsPolling(stopCodesRef, { intervalMs = 20000 } = {}) {
   )
 
   document.addEventListener('visibilitychange', onVisibilityChange)
+
+  onDeactivated(stopTimer)
+  onActivated(() => {
+    if (!document.hidden && (stopCodesRef.value ?? []).length) {
+      refresh()
+      startTimer()
+    }
+  })
 
   onScopeDispose(() => {
     stopTimer()

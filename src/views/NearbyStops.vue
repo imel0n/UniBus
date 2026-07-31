@@ -30,7 +30,6 @@ const cards = computed(() =>
     distance: formatDistance(stop.distanceM),
     isFavourite: favourites[stop.code] ?? false,
     services: arrivalsByStop.value[stop.code] ?? [],
-    loading: !(stop.code in arrivalsByStop.value),
   }))
 )
 
@@ -72,7 +71,6 @@ onMounted(() => {
           :distance="stop.distance"
           :is-favourite="stop.isFavourite"
           :services="stop.services"
-          :loading="stop.loading"
           @toggle-favourite="toggleFavourite(stop.code)"
         />
       </template>

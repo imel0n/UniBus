@@ -9,7 +9,6 @@ const props = defineProps({
   isFavourite: { type: Boolean, default: false },
   // [{ code: 'A1', arrival: 3 | 'Arr' | 'NA' }, ...]
   services: { type: Array, required: true },
-  loading: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['toggle-favourite'])
@@ -66,13 +65,7 @@ function arrivalClass(arrival) {
       </button>
     </div>
     <div class="services">
-      <template v-if="loading">
-        <div v-for="n in 3" :key="n" class="service">
-          <div class="code skeleton" />
-          <div class="arrival skeleton" />
-        </div>
-      </template>
-      <div v-for="service in sortedServices" v-else :key="service.code" class="service">
+      <div v-for="service in sortedServices" :key="service.code" class="service">
         <div class="code" :style="codeStyle(service.code)">{{ service.code }}</div>
         <div class="arrival" :class="arrivalClass(service.arrival)">
           {{ typeof service.arrival === 'number' ? `${service.arrival} min` : service.arrival }}
@@ -142,6 +135,7 @@ function arrivalClass(arrival) {
   gap: 20px;
   overflow-x: auto;
   margin-top: 12px;
+  min-height: 44px;
 }
 
 .service {
@@ -172,32 +166,5 @@ function arrivalClass(arrival) {
 .arrival.urgent {
   color: #16a34a;
   font-weight: 700;
-}
-
-.skeleton {
-  background: #e2e2e2;
-  color: transparent;
-  border-radius: 6px;
-  animation: skeleton-pulse 1.2s ease-in-out infinite;
-}
-
-.code.skeleton {
-  width: 32px;
-  height: 22px;
-}
-
-.arrival.skeleton {
-  width: 30px;
-  height: 12px;
-}
-
-@keyframes skeleton-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
 }
 </style>
