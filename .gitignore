@@ -37,3 +37,6 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+dev-dist/registerSW.js
+dev-dist/sw.js
+dev-dist/workbox-7e5eb42b.js
