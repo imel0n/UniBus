@@ -65,7 +65,7 @@ export function useArrivalsPolling(stopCodesRef, { intervalMs = 20000 } = {}) {
       refresh()
       startTimer()
     },
-    { immediate: true }
+    { immediate: true },
   )
 
   document.addEventListener('visibilitychange', onVisibilityChange)

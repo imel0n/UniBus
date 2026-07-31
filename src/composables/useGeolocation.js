@@ -36,7 +36,7 @@ export function useGeolocation() {
           fail('Couldn’t get your location.')
         }
       },
-      OPTIONS
+      OPTIONS,
     )
   }
 

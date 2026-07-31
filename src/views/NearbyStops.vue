@@ -1,17 +1,16 @@
 <script setup>
-import { computed, onMounted, reactive } from 'vue'
+import { computed, onMounted } from 'vue'
 import BusStopCard from '@/components/BusStopCard.vue'
 import PageHeader from '@/components/PageHeader.vue'
 import { useBusStopsStore } from '@/stores/busStops'
+import { useFavouritesStore } from '@/stores/favourites'
 import { useGeolocation } from '@/composables/useGeolocation'
 import { useArrivalsPolling } from '@/composables/useArrivalsPolling'
 import { formatDistance } from '@/utils/geo'
 
 const busStopsStore = useBusStopsStore()
+const favouritesStore = useFavouritesStore()
 const { coords, status: locationStatus, error: locationError, locate } = useGeolocation()
-
-// Favourites aren't persisted yet — this just keeps the toggle responsive.
-const favourites = reactive({})
 
 const nearbyStops = computed(() => {
   if (!coords.value || busStopsStore.status !== 'ready') return []
@@ -28,19 +27,18 @@ const cards = computed(() =>
     name: stop.name,
     road: stop.road,
     distance: formatDistance(stop.distanceM),
-    isFavourite: favourites[stop.code] ?? false,
+    isFavourite: favouritesStore.isFavourite(stop.code),
     services: arrivalsByStop.value[stop.code] ?? [],
-  }))
+    lat: stop.lat,
+    lon: stop.lon,
+  })),
 )
-
-function toggleFavourite(code) {
-  favourites[code] = !favourites[code]
-}
 
 onMounted(() => {
   // Independent of each other, so run both and render once they're both ready.
   locate()
   busStopsStore.ensureLoaded()
+  favouritesStore.ensureLoaded()
 })
 </script>
 
@@ -71,7 +69,7 @@ onMounted(() => {
           :distance="stop.distance"
           :is-favourite="stop.isFavourite"
           :services="stop.services"
-          @toggle-favourite="toggleFavourite(stop.code)"
+          @toggle-favourite="favouritesStore.toggle(stop)"
         />
       </template>
     </div>

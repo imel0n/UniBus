@@ -5,7 +5,7 @@ import heartIcon from '@/assets/icons/heart.png'
 const props = defineProps({
   name: { type: String, required: true },
   road: { type: String, default: '' },
-  distance: { type: String, required: true },
+  distance: { type: String, default: '' },
   isFavourite: { type: Boolean, default: false },
   // [{ code: 'A1', arrival: 3 | 'Arr' | 'NA' }, ...]
   services: { type: Array, required: true },
@@ -49,8 +49,8 @@ function arrivalClass(arrival) {
         <div class="name">{{ name }}</div>
         <div class="meta">
           <span v-if="road">{{ road }}</span>
-          <span v-if="road" class="dot">&middot;</span>
-          <span>{{ distance }}</span>
+          <span v-if="road && distance" class="dot">&middot;</span>
+          <span v-if="distance">{{ distance }}</span>
         </div>
       </div>
       <button
